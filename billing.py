@@ -3,238 +3,201 @@ from tkinter import messagebox, ttk
 import os
 import sys
 import qrcode
-from PIL import ImageTk
+import json
+from PIL import Image, ImageTk
 
-new = {
-    1001: {"name": "iPhone 15", "category": "Electronics", "price": 79900, "quantity": 10},
-    1002: {"name": "Dairy Milk", "category": "Food", "price": 100, "quantity": 50},
-    1003: {"name": "HP Laptop", "category": "Electronics", "price": 55000, "quantity": 5},
-    1004: {"name": "Parachute Oil", "category": "Personal Care", "price": 95, "quantity": 20},
-    1005: {"name": "Notebook", "category": "Stationery", "price": 45, "quantity": 100}
-}
+def load_products():
+    with open('products.json', 'r') as f:
+        return json.load(f)
 
-orders = []
-total_bill = 0
+def save_products(data):
+    with open('products.json', 'w') as f:
+        json.dump(data, f, indent=4)
 
 root = tk.Tk()
-root.title("Billing System")
 root.geometry("1000x700")
-root.configure(bg="#003af8")
+root.title("Paybee Billing")
+root.configure(bg="white")
 
-left_frame = tk.Frame(root, bg="#5e9dfb")
-left_frame.pack(side="left", fill="y", padx=10, pady=10)
+img = Image.open("logo.png")
+img = img.resize((250, 250))
+photo = ImageTk.PhotoImage(img)
+splash_label = tk.Label(root, image=photo, bg="white")
+splash_label.pack(expand=True)
 
-right_frame = tk.Frame(root, bg="#80cdd5")
-right_frame.pack(side="right", expand=True, fill="both", padx=10, pady=10)
+def launch_main_ui():
+    splash_label.destroy()
+    root.configure(bg="#003af8")
 
-content_frame = tk.Frame(left_frame, bg="#d0f0ff")
-content_frame.pack(pady=10, fill="both")
+    new = load_products()
+    orders = []
+    total_bill = 0
 
-qr_label = None
+    left_frame = tk.Frame(root, bg="#5e9dfb")
+    left_frame.pack(side="left", fill="y", padx=10, pady=10)
 
-def refresh_app():
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
+    right_frame = tk.Frame(root, bg="#80cdd5")
+    right_frame.pack(side="right", expand=True, fill="both", padx=10, pady=10)
 
-def gen_bill():
-    for widget in content_frame.winfo_children():
-        widget.destroy()
+    content_frame = tk.Frame(left_frame, bg="#d0f0ff")
+    content_frame.pack(pady=10, fill="both")
 
-    tk.Label(content_frame, text="Enter Product ID", bg="#d0f0ff").pack(pady=2)
-    pid_entry = tk.Entry(content_frame)
-    pid_entry.pack(pady=2)
+    def refresh_app():
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
-    tk.Label(content_frame, text="Enter Quantity", bg="#d0f0ff").pack(pady=2)
-    qty_entry = tk.Entry(content_frame)
-    qty_entry.pack(pady=2)
+    def gen_bill():
+        for widget in content_frame.winfo_children():
+            widget.destroy()
 
-    tree = ttk.Treeview(content_frame, columns=("Name", "Qty", "Price", "Total"), show='headings', height=8)
-    tree.heading("Name", text="Product Name")
-    tree.heading("Qty", text="Quantity")
-    tree.heading("Price", text="Price")
-    tree.heading("Total", text="Total")
-    tree.column("Name", width=120)
-    tree.column("Qty", width=80, anchor='center')
-    tree.column("Price", width=80, anchor='center')
-    tree.column("Total", width=100, anchor='center')
-    tree.pack(pady=10)
+        tk.Label(content_frame, text="Enter Product ID", bg="#d0f0ff").pack(pady=2)
+        pid_entry = tk.Entry(content_frame)
+        pid_entry.pack(pady=2)
 
-    for order in orders:
-        tree.insert("", "end", values=(order["name"], order["qty"], f"₹{order['price']}", f"₹{order['total']}"))
+        tk.Label(content_frame, text="Enter Quantity", bg="#d0f0ff").pack(pady=2)
+        qty_entry = tk.Entry(content_frame)
+        qty_entry.pack(pady=2)
 
-    def bill_add():
-        nonlocal tree
-        global total_bill
-        try:
-            pid = int(pid_entry.get())
-            qty = int(qty_entry.get())
-            if pid not in new:
-                messagebox.showerror("Error", "Product ID not found.")
-                return
-            product = new[pid]
-            if qty > product['quantity']:
-                messagebox.showerror("Error", f"Only {product['quantity']} units available.")
-                return
-            total = product['price'] * qty
-            orders.append({"name": product['name'], "price": product['price'], "qty": qty, "total": total})
-            new[pid]['quantity'] -= qty
-            total_bill += total
-            tree.insert("", "end", values=(product["name"], qty, f"₹{product['price']}", f"₹{total}"))
-            pid_entry.delete(0, tk.END)
-            qty_entry.delete(0, tk.END)
-        except ValueError:
-            messagebox.showerror("Invalid input", "Enter valid numbers.")
+        tree = ttk.Treeview(content_frame, columns=("Name", "Qty", "Price", "Total"), show='headings', height=8)
+        tree.heading("Name", text="Product Name")
+        tree.heading("Qty", text="Quantity")
+        tree.heading("Price", text="Price")
+        tree.heading("Total", text="Total")
+        tree.column("Name", width=120)
+        tree.column("Qty", width=80, anchor='center')
+        tree.column("Price", width=80, anchor='center')
+        tree.column("Total", width=100, anchor='center')
+        tree.pack(pady=10)
 
-    tk.Button(content_frame, text="Add to Bill", bg="light blue", command=bill_add).pack(pady=5)
+        for order in orders:
+            tree.insert("", "end", values=(order["name"], order["qty"], f"₹{order['price']}", f"₹{order['total']}"))
 
-def del_bill():
-    for widget in content_frame.winfo_children():
-        widget.destroy()
-    tk.Label(content_frame, text="Enter Product ID to delete", bg="#d0f0ff").pack(pady=2)
-    del_entry = tk.Entry(content_frame)
-    del_entry.pack(pady=2)
-    def delete_action():
-        try:
-            pid = int(del_entry.get())
+        def bill_add():
+            nonlocal tree, total_bill, new
+            try:
+                pid = str(pid_entry.get())
+                qty = int(qty_entry.get())
+                if pid not in new:
+                    messagebox.showerror("Error", "Product ID not found.")
+                    return
+                product = new[pid]
+                if qty > product['quantity']:
+                    messagebox.showerror("Error", f"Only {product['quantity']} units available.")
+                    return
+                total = product['price'] * qty
+                orders.append({"name": product['name'], "price": product['price'], "qty": qty, "total": total})
+                new[pid]['quantity'] -= qty
+                total_bill += total
+                tree.insert("", "end", values=(product["name"], qty, f"₹{product['price']}", f"₹{total}"))
+                save_products(new)
+                pid_entry.delete(0, tk.END)
+                qty_entry.delete(0, tk.END)
+            except ValueError:
+                messagebox.showerror("Invalid input", "Enter valid numbers.")
+
+        tk.Button(content_frame, text="Add to Bill", bg="light blue", command=bill_add).pack(pady=5)
+
+    def del_bill():
+        for widget in content_frame.winfo_children():
+            widget.destroy()
+        tk.Label(content_frame, text="Enter Product ID to delete", bg="#d0f0ff").pack(pady=2)
+        del_entry = tk.Entry(content_frame)
+        del_entry.pack(pady=2)
+        def delete_action():
+            nonlocal new
+            pid = str(del_entry.get())
             if pid in new:
                 del new[pid]
+                save_products(new)
                 messagebox.showinfo("Deleted", f"Product ID {pid} deleted.")
                 del_entry.delete(0, tk.END)
             else:
                 messagebox.showerror("Error", "Product not found.")
-        except ValueError:
-            messagebox.showerror("Invalid input", "Enter a valid Product ID.")
-    tk.Button(content_frame, text="Delete Product", bg="red", fg="white", command=delete_action).pack(pady=5)
+        tk.Button(content_frame, text="Delete Product", bg="red", fg="white", command=delete_action).pack(pady=5)
 
-def pro_bill():
-    for widget in content_frame.winfo_children():
-        widget.destroy()
-    tk.Label(content_frame, text="Enter New Product ID", bg="#d0f0ff").pack(pady=2)
-    pid_entry = tk.Entry(content_frame)
-    pid_entry.pack(pady=2)
-    tk.Label(content_frame, text="Enter Name", bg="#d0f0ff").pack(pady=2)
-    name_entry = tk.Entry(content_frame)
-    name_entry.pack(pady=2)
-    tk.Label(content_frame, text="Category", bg="#d0f0ff").pack(pady=2)
-    cat_entry = tk.Entry(content_frame)
-    cat_entry.pack(pady=2)
-    tk.Label(content_frame, text="Price", bg="#d0f0ff").pack(pady=2)
-    price_entry = tk.Entry(content_frame)
-    price_entry.pack(pady=2)
-    tk.Label(content_frame, text="Quantity", bg="#d0f0ff").pack(pady=2)
-    qty_entry = tk.Entry(content_frame)
-    qty_entry.pack(pady=2)
-    def add_product():
-        try:
-            pid = int(pid_entry.get())
-            name = name_entry.get()
-            cat = cat_entry.get()
-            price = int(price_entry.get())
-            qty = int(qty_entry.get())
-            if pid in new:
-                messagebox.showerror("Error", "Product ID already exists.")
-                return
-            new[pid] = {"name": name, "category": cat, "price": price, "quantity": qty}
-            messagebox.showinfo("Success", f"Product '{name}' added.")
-            for entry in [pid_entry, name_entry, cat_entry, price_entry, qty_entry]:
-                entry.delete(0, tk.END)
-            for widget in right_frame.winfo_children():
-                widget.destroy()
-            display = tk.Text(right_frame, width=70, height=25, font=("Courier New", 10))
-            display.pack(pady=10)
-            display.insert(tk.END, "---------- Product Inventory ----------\n")
-            display.insert(tk.END, f"{'ID':<6} {'Name':<20} {'Qty':<8} {'Price':<10}\n")
-            display.insert(tk.END, "-" * 50 + "\n")
-            for pid, item in new.items():
-                display.insert(tk.END, f"{pid:<6} {item['name'][:20]:<20} {item['quantity']:<8} ₹{item['price']:<10}\n")
-        except ValueError:
-            messagebox.showerror("Invalid input", "Enter valid details.")
-    tk.Button(content_frame, text="Add Product", bg="green", fg="white", command=add_product).pack(pady=5)
+    def pro_bill():
+        for widget in content_frame.winfo_children():
+            widget.destroy()
+        entries = {}
+        for label in ["New Product ID", "Name", "Category", "Price", "Quantity"]:
+            tk.Label(content_frame, text=f"Enter {label}", bg="#d0f0ff").pack(pady=2)
+            e = tk.Entry(content_frame)
+            e.pack(pady=2)
+            entries[label] = e
 
-def show_bill():
-    global qr_label
-    for widget in right_frame.winfo_children():
-        widget.destroy()
+        def add_product():
+            nonlocal new
+            pid = entries["New Product ID"].get()
+            name = entries["Name"].get()
+            cat = entries["Category"].get()
+            try:
+                price = int(entries["Price"].get())
+                qty = int(entries["Quantity"].get())
+                if pid in new:
+                    messagebox.showerror("Error", "Product ID already exists.")
+                    return
+                new[pid] = {"name": name, "category": cat, "price": price, "quantity": qty}
+                save_products(new)
+                messagebox.showinfo("Success", f"Product '{name}' added.")
+                for e in entries.values():
+                    e.delete(0, tk.END)
+            except:
+                messagebox.showerror("Error", "Invalid entry.")
 
-    canvas = tk.Canvas(right_frame, bg="#ffffff")
-    scrollbar = tk.Scrollbar(right_frame, orient="vertical", command=canvas.yview)
-    scroll_frame = tk.Frame(canvas, bg="#ffffff")
+        tk.Button(content_frame, text="Add Product", bg="green", fg="white", command=add_product).pack(pady=5)
 
-    scroll_frame.bind(
-        "<Configure>",
-        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-    )
+    def show_bill():
+        for widget in right_frame.winfo_children():
+            widget.destroy()
+        canvas = tk.Canvas(right_frame, bg="#ffffff")
+        scrollbar = tk.Scrollbar(right_frame, orient="vertical", command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg="#ffffff")
+        scroll_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
-    canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
+        display = tk.Text(scroll_frame, width=60, height=30, font=("Courier New", 10), bg="#ffffff", bd=0)
+        display.pack(pady=10)
+        display.insert(tk.END, "------------------- ABC STORES -----------------\n")
+        display.insert(tk.END, "-------------- ABC CITY, KERALA, 678356 -------------\n")
+        display.insert(tk.END, "-------------------- Final Bill --------------------\n\n")
+        display.insert(tk.END, "=====================================================\n")
+        display.insert(tk.END, f"{'Name':20} {'Qty':>5} {'Price':>10} {'Total':>10}\n")
+        display.insert(tk.END, "=====================================================\n")
+        for item in orders:
+            line = f"{item['name'][:20].ljust(20)} {str(item['qty']).rjust(5)} ₹{str(item['price']).rjust(8)} ₹{str(item['total']).rjust(8)}\n"
+            display.insert(tk.END, line)
+        display.insert(tk.END, "=====================================================\n")
+        gst = total_bill * 0.18
+        grand_total = total_bill + gst
+        display.insert(tk.END, f"\nSubtotal: ₹{total_bill:.2f}\nGST (18%): ₹{gst:.2f}\nTotal Amount: ₹{grand_total:.2f}\n")
+        upi_url = f"upi://pay?pa=767676767667@upi&pn=GPay%20User&am={grand_total:.2f}&cu=INR"
+        qr = qrcode.make(upi_url).resize((150, 150))
+        qr_img = ImageTk.PhotoImage(qr)
+        tk.Label(scroll_frame, image=qr_img, bg="#ffffff").pack(pady=10)
+        scroll_frame.qr_img = qr_img
 
-    canvas.pack(side="left", fill="both", expand=True)
-    scrollbar.pack(side="right", fill="y")
+    def daily():
+        messagebox.showinfo("Total Bill", f" ₹{total_bill:.2f}")
 
-    display = tk.Text(scroll_frame, width=60, height=30, font=("Courier New", 10), bg="#ffffff", bd=0)
-    display.pack(pady=10)
-    display.insert(tk.END, "------------------- ABC STORES -----------------\n")
-    display.insert(tk.END, "-------------- ABC CITY, KERALA, 678356 -------------\n")
-    display.insert(tk.END, "-------------------- Final Bill --------------------\n\n")
-    display.insert(tk.END, "=====================================================\n")
-    display.insert(tk.END, f"{'Name':20} {'Qty':>5} {'Price':>10} {'Total':>10}\n")
-    display.insert(tk.END, "=====================================================\n")
-    for item in orders:
-        line = f"{item['name'][:20].ljust(20)} {str(item['qty']).rjust(5)} ₹{str(item['price']).rjust(8)} ₹{str(item['total']).rjust(8)}\n"
-        display.insert(tk.END, line)
-    display.insert(tk.END, "=====================================================\n")
-    display.insert(tk.END, f"\nSubtotal: ₹{total_bill:.2f}\n")
-    gst = total_bill * 0.18
-    display.insert(tk.END, f"GST (18%): ₹{gst:.2f}\n")
-    grand_total = total_bill + gst
-    display.insert(tk.END, f"Total Amount: ₹{grand_total:.2f}\n")
-    display.insert(tk.END, "=====================================================\n")
+    def contactme():
+        for widget in right_frame.winfo_children():
+            widget.destroy()
+        display = tk.Text(right_frame, width=60, height=30, font=("Courier New", 10), bg="#ffffff", bd=0)
+        display.pack(pady=10)
+        display.insert(tk.END, "------------------- ABC STORES -----------------\n")
+        display.insert(tk.END, "-------------- ABC CITY, KERALA, 678356 -------------\n")
+        display.insert(tk.END, "Harikrishan K :- Owner\nPhone: 8746389362\n")
 
-    amount = f"{grand_total:.2f}"
-    upi_url = f"upi://pay?pa=767676767667@upi&pn=GPay%20User&am={amount}&cu=INR"
-    qr = qrcode.make(upi_url)
-    qr = qr.resize((150, 150))
-    qr_img = ImageTk.PhotoImage(qr)
+    tk.Button(left_frame, bg="#8af410", text="Add to Bill", command=gen_bill).pack(pady=5, fill='x')
+    tk.Button(left_frame, bg="#45f410", text="Show Final Bill", command=show_bill).pack(pady=5, fill='x')
+    tk.Button(left_frame, bg="#7af410", text="Check Total", command=daily).pack(pady=10, fill='x')
+    tk.Button(left_frame, bg="#10f451", text="Add Product", command=pro_bill).pack(pady=5, fill='x')
+    tk.Button(left_frame, bg="#f41010", text="Delete Product", command=del_bill).pack(pady=5, fill='x')
+    tk.Button(left_frame, bg="#1095f4", text="Refresh", command=refresh_app).pack(pady=5, fill='x')
+    tk.Button(left_frame, bg="#ffffff", text="Contact", command=contactme).pack(pady=5, fill='x')
 
-    qr_label = tk.Label(scroll_frame, image=qr_img, bg="#ffffff")
-    qr_label.image = qr_img
-    qr_label.pack(pady=10)
-
-def daily():
-    messagebox.showinfo("Total Bill", f" ₹{total_bill:.2f}")
-def contactme():
-    global qr_label
-    for widget in right_frame.winfo_children():
-        widget.destroy()
-
-    canvas = tk.Canvas(right_frame, bg="#ffffff")
-    scrollbar = tk.Scrollbar(right_frame, orient="vertical", command=canvas.yview)
-    scroll_frame = tk.Frame(canvas, bg="#ffffff")
-
-    scroll_frame.bind(
-        "<Configure>",
-        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-    )
-
-    canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
-
-    canvas.pack(side="left", fill="both", expand=True)
-    scrollbar.pack(side="right", fill="y")
-
-    display = tk.Text(scroll_frame, width=60, height=30, font=("Courier New", 10), bg="#ffffff", bd=0)
-    display.pack(pady=10)
-    display.insert(tk.END, "------------------- ABC STORES -----------------\n")
-    display.insert(tk.END, "-------------- ABC CITY, KERALA, 678356 -------------\n")
-    display.insert(tk.END, "Harikrishan K :-Owner\n\n")
-    display.insert(tk.END, "8746389362\n\n")
-    display.insert(tk.END, "=====================================================\n")
-
-tk.Button(left_frame, bg="#8af410", text="Add to Bill", command=gen_bill).pack(pady=5, fill='x')
-tk.Button(left_frame, bg="#45f410", text="Show Final Bill", command=show_bill).pack(pady=5, fill='x')
-tk.Button(left_frame, bg="#7af410", text="Check Total", command=daily).pack(pady=10, fill='x')
-tk.Button(left_frame, bg="#10f451", text="Add Product", command=pro_bill).pack(pady=5, fill='x')
-tk.Button(left_frame, bg="#f41010", text="Delete Product", command=del_bill).pack(pady=5, fill='x')
-tk.Button(left_frame, bg="#1095f4", text="Refresh", command=refresh_app).pack(pady=5, fill='x')
-tk.Button(left_frame, bg="#ffffff", text="Contact", command=contactme).pack(pady=5, fill='x')
+root.after(3000, launch_main_ui)
 root.mainloop()
