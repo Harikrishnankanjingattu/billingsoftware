@@ -1,0 +1,32 @@
+{
+    "1002": {
+        "name": "Dairy Milk",
+        "category": "Food",
+        "price": 100,
+        "quantity": 48
+    },
+    "1003": {
+        "name": "HP Laptop",
+        "category": "Electronics",
+        "price": 55000,
+        "quantity": 5
+    },
+    "1004": {
+        "name": "Parachute Oil",
+        "category": "Personal Care",
+        "price": 95,
+        "quantity": 20
+    },
+    "1005": {
+        "name": "Notebook",
+        "category": "Stationery",
+        "price": 45,
+        "quantity": 100
+    },
+    "1007": {
+        "name": "soap",
+        "category": "soap",
+        "price": 20,
+        "quantity": 20
+    }
+}
