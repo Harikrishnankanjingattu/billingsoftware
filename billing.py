@@ -14,6 +14,12 @@ def save_products(data):
     with open('products.json', 'w') as f:
         json.dump(data, f, indent=4)
 
+def generate_qr_image(data_string, filename):
+    qr = qrcode.make(data_string)
+    path = f"{filename}.png"
+    qr.save(path)
+    return path
+
 root = tk.Tk()
 root.geometry("1000x700")
 root.title("Paybee Billing")
@@ -63,10 +69,6 @@ def launch_main_ui():
         tree.heading("Qty", text="Quantity")
         tree.heading("Price", text="Price")
         tree.heading("Total", text="Total")
-        tree.column("Name", width=120)
-        tree.column("Qty", width=80, anchor='center')
-        tree.column("Price", width=80, anchor='center')
-        tree.column("Total", width=100, anchor='center')
         tree.pack(pady=10)
 
         for order in orders:
@@ -146,9 +148,41 @@ def launch_main_ui():
 
         tk.Button(content_frame, text="Add Product", bg="green", fg="white", command=add_product).pack(pady=5)
 
+    def view_products():
+        for widget in right_frame.winfo_children():
+            widget.destroy()
+        canvas = tk.Canvas(right_frame, bg="white")
+        scrollbar = tk.Scrollbar(right_frame, orient="vertical", command=canvas.yview)
+        scroll_frame = tk.Frame(canvas, bg="white")
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        scroll_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        headers = ["Product ID", "Name", "Category", "Price", "Quantity", "QR Code"]
+        for i, h in enumerate(headers):
+            tk.Label(scroll_frame, text=h, font=("Arial", 10, "bold"), borderwidth=1, relief="solid", width=18, bg="#d0f0ff").grid(row=0, column=i, sticky="nsew")
+
+        for idx, (pid, item) in enumerate(new.items(), start=1):
+            tk.Label(scroll_frame, text=pid, borderwidth=1, relief="solid", width=18).grid(row=idx, column=0)
+            tk.Label(scroll_frame, text=item["name"], borderwidth=1, relief="solid", width=18).grid(row=idx, column=1)
+            tk.Label(scroll_frame, text=item["category"], borderwidth=1, relief="solid", width=18).grid(row=idx, column=2)
+            tk.Label(scroll_frame, text=f"₹{item['price']}", borderwidth=1, relief="solid", width=18).grid(row=idx, column=3)
+            tk.Label(scroll_frame, text=item["quantity"], borderwidth=1, relief="solid", width=18).grid(row=idx, column=4)
+
+            qr_data = f"ID: {pid}, Name: {item['name']}, Price: ₹{item['price']}, Qty: {item['quantity']}"
+            qr_path = generate_qr_image(qr_data, f"qr_{pid}")
+            img = Image.open(qr_path).resize((100, 100))
+            img_qr = ImageTk.PhotoImage(img)
+            label = tk.Label(scroll_frame, image=img_qr, borderwidth=1, relief="solid")
+            label.image = img_qr
+            label.grid(row=idx, column=5, padx=2, pady=2)
+
     def show_bill():
         for widget in right_frame.winfo_children():
             widget.destroy()
+
         canvas = tk.Canvas(right_frame, bg="#ffffff")
         scrollbar = tk.Scrollbar(right_frame, orient="vertical", command=canvas.yview)
         scroll_frame = tk.Frame(canvas, bg="#ffffff")
@@ -173,6 +207,7 @@ def launch_main_ui():
         gst = total_bill * 0.18
         grand_total = total_bill + gst
         display.insert(tk.END, f"\nSubtotal: ₹{total_bill:.2f}\nGST (18%): ₹{gst:.2f}\nTotal Amount: ₹{grand_total:.2f}\n")
+
         upi_url = f"upi://pay?pa=767676767667@upi&pn=GPay%20User&am={grand_total:.2f}&cu=INR"
         qr = qrcode.make(upi_url).resize((150, 150))
         qr_img = ImageTk.PhotoImage(qr)
@@ -198,6 +233,7 @@ def launch_main_ui():
     tk.Button(left_frame, bg="#f41010", text="Delete Product", command=del_bill).pack(pady=5, fill='x')
     tk.Button(left_frame, bg="#1095f4", text="Refresh", command=refresh_app).pack(pady=5, fill='x')
     tk.Button(left_frame, bg="#ffffff", text="Contact", command=contactme).pack(pady=5, fill='x')
+    tk.Button(left_frame, bg="#c0c0c0", text="View All Products", command=view_products).pack(pady=5, fill='x')
 
 root.after(3000, launch_main_ui)
 root.mainloop()
